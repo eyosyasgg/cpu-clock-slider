@@ -28,6 +28,21 @@ case "$cmd" in
       val=100
     fi
 
+    # Set scaling_max_freq across all policies
+    if [ "$val" -ge 95 ]; then
+      for p in /sys/devices/system/cpu/cpufreq/policy*; do
+        [ -f "$p/cpuinfo_max_freq" ] && cat "$p/cpuinfo_max_freq" > "$p/scaling_max_freq" 2>/dev/null
+      done
+    elif [ "$val" -ge 65 ]; then
+      for p in /sys/devices/system/cpu/cpufreq/policy*; do
+        echo 2000000 > "$p/scaling_max_freq" 2>/dev/null
+      done
+    else
+      for p in /sys/devices/system/cpu/cpufreq/policy*; do
+        echo 1000000 > "$p/scaling_max_freq" 2>/dev/null
+      done
+    fi
+
     # 1. Try direct write (works if tmpfiles.d / udev permissions are set)
     if printf "%d\n" "$val" 2>/dev/null > "$SYS_FILE"; then
       echo "$val"

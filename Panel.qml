@@ -15,7 +15,7 @@ Panel {
   // Active limit percentage (50%, 70%, 100%)
   property int currentLimit: 100
   property string currentFreq: "---"
-  property string currentMaxFreq: "2.0 GHz"
+  property string currentMaxFreq: "4.4 GHz"
   readonly property bool busy: writeProcess.running
 
   readonly property string sysPath: "/sys/devices/system/cpu/intel_pstate/max_perf_pct"
@@ -57,12 +57,15 @@ Panel {
       else val = 100
     }
     currentLimit = val
-    var khz = val * 20000
-    writeProcess.command = [
-      "sh", "-c",
-      "echo " + val + " > " + root.sysPath + " 2>/dev/null; " +
-      "for p in /sys/devices/system/cpu/cpufreq/policy*; do echo " + khz + " > \"$p/scaling_max_freq\" 2>/dev/null; done"
-    ]
+    var cmd = ""
+    if (val === 100) {
+      cmd = "echo 100 > " + root.sysPath + " 2>/dev/null; for p in /sys/devices/system/cpu/cpufreq/policy*; do cat \"$p/cpuinfo_max_freq\" > \"$p/scaling_max_freq\" 2>/dev/null; done"
+    } else if (val === 70) {
+      cmd = "echo 70 > " + root.sysPath + " 2>/dev/null; for p in /sys/devices/system/cpu/cpufreq/policy*; do echo 2000000 > \"$p/scaling_max_freq\" 2>/dev/null; done"
+    } else {
+      cmd = "echo 50 > " + root.sysPath + " 2>/dev/null; for p in /sys/devices/system/cpu/cpufreq/policy*; do echo 1000000 > \"$p/scaling_max_freq\" 2>/dev/null; done"
+    }
+    writeProcess.command = ["sh", "-c", cmd]
     writeProcess.running = true
   }
 
@@ -84,7 +87,7 @@ Panel {
       "bash", "-c",
       "cat " + root.sysPath + " 2>/dev/null || echo 100\n" +
       "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0\n" +
-      "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 2000000"
+      "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 4400000"
     ]
     stdout: StdioCollector {
       waitForEnd: true
@@ -208,8 +211,8 @@ Panel {
           Repeater {
             model: [
               { pct: 50, label: "50%", desc: "1.0 GHz" },
-              { pct: 70, label: "70%", desc: "1.4 GHz" },
-              { pct: 100, label: "100%", desc: "2.0 GHz" }
+              { pct: 70, label: "70%", desc: "2.0 GHz" },
+              { pct: 100, label: "100%", desc: "4.4 GHz" }
             ]
 
             Button {

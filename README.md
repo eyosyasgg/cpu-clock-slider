@@ -1,6 +1,6 @@
 # CPU Clock Speed (Omarchy Plugin)
 
-A native bar widget and popup panel for Omarchy Quattro that allows toggling CPU clock speed tiers: **50%** (1.0 GHz), **70%** (1.4 GHz), and **100%** (2.0 GHz).
+A native bar widget and popup panel for Omarchy Quattro that allows toggling CPU clock speed tiers: **50%** (1.0 GHz), **70%** (2.0 GHz), and **100%** (4.4 GHz Turbo).
 
 Matches the Windows "Maximum processor state" functionality on Linux using the kernel `intel_pstate` driver and `cpufreq` scaling ceilings.
 
@@ -11,8 +11,8 @@ Matches the Windows "Maximum processor state" functionality on Linux using the k
 - **Bar Widget**: Displays a clean hardware microchip CPU icon (``). Fits alongside native system icons.
 - **3 Simple Tiers**:
   - `50%` (1.0 GHz) — Eco / Maximum battery savings and low temperatures.
-  - `70%` (1.4 GHz) — Balanced daily performance.
-  - `100%` (2.0 GHz) — Full unrestricted performance.
+  - `70%` (2.0 GHz) — Balanced / Base clock (quiet, cool, no fan noise).
+  - `100%` (4.4 GHz) — Full unrestricted Turbo boost performance.
 - **Scroll Wheel Support**: Scroll your mouse wheel directly over the CPU icon to step between 50%, 70%, and 100%.
 - **Keyboard Navigation**: Press <kbd>Left</kbd> / <kbd>Right</kbd> to step down / up, and <kbd>Esc</kbd> to dismiss the panel.
 - **Theme-Integrated**: Uses Omarchy Quattro styling tokens (`Style`, `Color`, `qs.Ui`).
