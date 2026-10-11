@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "eyosyasgg.cpu-clock-slider",
+  "name": "CPU Power Limiter",
+  "version": "1.0.0",
+  "author": "eyosyasgg",
+  "license": "MIT",
+  "description": "Adjust Intel CPU maximum performance state percentage (50% - 100%) in 10% steps",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "CPU Power Limiter",
+    "description": "Adjust CPU power and performance percentage",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# cpu-limit-ctl: Backend helper for Omarchy CPU Power Limiter plugin
+
+SYS_FILE="/sys/devices/system/cpu/intel_pstate/max_perf_pct"
+
+cmd="${1:-get}"
+
+case "$cmd" in
+  get)
+    if [ -r "$SYS_FILE" ]; then
+      cat "$SYS_FILE"
+    else
+      echo "100"
+    fi
+    ;;
+
+  set)
+    val="$2"
+    if ! [[ "$val" =~ ^[0-9]+$ ]]; then
+      echo "Error: Limit must be an integer between 50 and 100" >&2
+      exit 1
+    fi
+
+    # Clamp between 50 and 100
+    if [ "$val" -lt 50 ]; then
+      val=50
+    elif [ "$val" -gt 100 ]; then
+      val=100
+    fi
+
+    # 1. Try direct write (works if tmpfiles.d / udev permissions are set)
+    if printf "%d\n" "$val" 2>/dev/null > "$SYS_FILE"; then
+      echo "$val"
+      exit 0
+    fi
+
+    # 2. Try passwordless sudo if configured
+    if echo "$val" | sudo -n tee "$SYS_FILE" >/dev/null 2>&1; then
+      echo "$val"
+      exit 0
+    fi
+
+    # 3. Try pkexec (GUI authorization prompt) if available
+    if command -v pkexec >/dev/null 2>&1; then
+      if pkexec sh -c "echo $val > $SYS_FILE" 2>/dev/null; then
+        echo "$val"
+        exit 0
+      fi
+    fi
+
+    echo "Error: Cannot write to $SYS_FILE. Permission denied." >&2
+    exit 1
+    ;;
+
+  status)
+    driver="unknown"
+    if [ -r "/sys/devices/system/cpu/cpu0/cpufreq/scaling_driver" ]; then
+      driver=$(cat "/sys/devices/system/cpu/cpu0/cpufreq/scaling_driver")
+    fi
+    current_limit="100"
+    if [ -r "$SYS_FILE" ]; then
+      current_limit=$(cat "$SYS_FILE")
+    fi
+    echo "driver=$driver"
+    echo "limit=$current_limit"
+    ;;
+
+  *)
+    echo "Usage: $0 {get|set <50-100>|status}" >&2
+    exit 1
+    ;;
+esac
