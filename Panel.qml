@@ -59,11 +59,17 @@ Panel {
     currentLimit = val
     var cmd = ""
     if (val === 100) {
-      cmd = "echo 100 > " + root.sysPath + " 2>/dev/null; for p in /sys/devices/system/cpu/cpufreq/policy*; do cat \"$p/cpuinfo_max_freq\" > \"$p/scaling_max_freq\" 2>/dev/null; done"
+      cmd = "echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null; " +
+            "echo 100 > " + root.sysPath + " 2>/dev/null; " +
+            "for p in /sys/devices/system/cpu/cpufreq/policy*; do cat \"$p/cpuinfo_max_freq\" > \"$p/scaling_max_freq\" 2>/dev/null; done"
     } else if (val === 70) {
-      cmd = "echo 70 > " + root.sysPath + " 2>/dev/null; for p in /sys/devices/system/cpu/cpufreq/policy*; do echo 2000000 > \"$p/scaling_max_freq\" 2>/dev/null; done"
+      cmd = "echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null; " +
+            "echo 70 > " + root.sysPath + " 2>/dev/null; " +
+            "for p in /sys/devices/system/cpu/cpufreq/policy*; do cat \"$p/cpuinfo_max_freq\" > \"$p/scaling_max_freq\" 2>/dev/null; done"
     } else {
-      cmd = "echo 50 > " + root.sysPath + " 2>/dev/null; for p in /sys/devices/system/cpu/cpufreq/policy*; do echo 1000000 > \"$p/scaling_max_freq\" 2>/dev/null; done"
+      cmd = "echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null; " +
+            "echo 50 > " + root.sysPath + " 2>/dev/null; " +
+            "for p in /sys/devices/system/cpu/cpufreq/policy*; do echo 1000000 > \"$p/scaling_max_freq\" 2>/dev/null; done"
     }
     writeProcess.command = ["sh", "-c", cmd]
     writeProcess.running = true
@@ -85,6 +91,7 @@ Panel {
     id: readProcess
     command: [
       "bash", "-c",
+      "cat /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 0\n" +
       "cat " + root.sysPath + " 2>/dev/null || echo 100\n" +
       "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0\n" +
       "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 4400000"
@@ -93,25 +100,24 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         var lines = text.trim().split("\n")
-        if (lines.length >= 1) {
-          var num = parseInt(lines[0].trim())
-          if (!isNaN(num)) {
-            if (num <= 55) root.currentLimit = 50
-            else if (num <= 75) root.currentLimit = 70
-            else root.currentLimit = 100
-          }
+        var noTurbo = (lines.length >= 1) ? parseInt(lines[0].trim()) : 0
+        var maxPerf = (lines.length >= 2) ? parseInt(lines[1].trim()) : 100
+        var curKhz  = (lines.length >= 3) ? parseInt(lines[2].trim()) : 0
+        var maxKhz  = (lines.length >= 4) ? parseInt(lines[3].trim()) : 4400000
+
+        if (!isNaN(curKhz) && curKhz > 0) {
+          root.currentFreq = (curKhz / 1000000).toFixed(2) + " GHz"
         }
-        if (lines.length >= 2) {
-          var khz = parseInt(lines[1].trim())
-          if (!isNaN(khz) && khz > 0) {
-            root.currentFreq = (khz / 1000000).toFixed(2) + " GHz"
-          }
+        if (!isNaN(maxKhz) && maxKhz > 0) {
+          root.currentMaxFreq = (maxKhz / 1000000).toFixed(1) + " GHz"
         }
-        if (lines.length >= 3) {
-          var maxKhz = parseInt(lines[2].trim())
-          if (!isNaN(maxKhz) && maxKhz > 0) {
-            root.currentMaxFreq = (maxKhz / 1000000).toFixed(1) + " GHz"
-          }
+
+        if (maxKhz <= 1200000 || maxPerf <= 55) {
+          root.currentLimit = 50
+        } else if (noTurbo === 1 || maxKhz <= 2200000 || maxPerf <= 75) {
+          root.currentLimit = 70
+        } else {
+          root.currentLimit = 100
         }
       }
     }

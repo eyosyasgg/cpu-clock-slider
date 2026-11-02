@@ -28,16 +28,21 @@ case "$cmd" in
       val=100
     fi
 
-    # Set scaling_max_freq across all policies
+    TURBO_FILE="/sys/devices/system/cpu/intel_pstate/no_turbo"
+
+    # Set no_turbo and scaling_max_freq across all policies
     if [ "$val" -ge 95 ]; then
+      [ -w "$TURBO_FILE" ] && echo 0 > "$TURBO_FILE" 2>/dev/null
       for p in /sys/devices/system/cpu/cpufreq/policy*; do
         [ -f "$p/cpuinfo_max_freq" ] && cat "$p/cpuinfo_max_freq" > "$p/scaling_max_freq" 2>/dev/null
       done
     elif [ "$val" -ge 65 ]; then
+      [ -w "$TURBO_FILE" ] && echo 1 > "$TURBO_FILE" 2>/dev/null
       for p in /sys/devices/system/cpu/cpufreq/policy*; do
-        echo 2000000 > "$p/scaling_max_freq" 2>/dev/null
+        [ -f "$p/cpuinfo_max_freq" ] && cat "$p/cpuinfo_max_freq" > "$p/scaling_max_freq" 2>/dev/null
       done
     else
+      [ -w "$TURBO_FILE" ] && echo 1 > "$TURBO_FILE" 2>/dev/null
       for p in /sys/devices/system/cpu/cpufreq/policy*; do
         echo 1000000 > "$p/scaling_max_freq" 2>/dev/null
       done
@@ -51,13 +56,16 @@ case "$cmd" in
 
     # 2. Try passwordless sudo if configured
     if echo "$val" | sudo -n tee "$SYS_FILE" >/dev/null 2>&1; then
+      [ "$val" -ge 95 ] && echo 0 | sudo -n tee "$TURBO_FILE" >/dev/null 2>&1
+      [ "$val" -lt 95 ] && echo 1 | sudo -n tee "$TURBO_FILE" >/dev/null 2>&1
       echo "$val"
       exit 0
     fi
 
     # 3. Try pkexec (GUI authorization prompt) if available
     if command -v pkexec >/dev/null 2>&1; then
-      if pkexec sh -c "echo $val > $SYS_FILE" 2>/dev/null; then
+      turbo_val=$([ "$val" -ge 95 ] && echo 0 || echo 1)
+      if pkexec sh -c "echo $val > $SYS_FILE && echo $turbo_val > $TURBO_FILE" 2>/dev/null; then
         echo "$val"
         exit 0
       fi
@@ -76,8 +84,18 @@ case "$cmd" in
     if [ -r "$SYS_FILE" ]; then
       current_limit=$(cat "$SYS_FILE")
     fi
+    turbo="enabled"
+    if [ -r "/sys/devices/system/cpu/intel_pstate/no_turbo" ] && [ "$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)" = "1" ]; then
+      turbo="disabled"
+    fi
+    max_freq="unknown"
+    if [ -r "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq" ]; then
+      max_freq=$(cat "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq")
+    fi
     echo "driver=$driver"
     echo "limit=$current_limit"
+    echo "turbo=$turbo"
+    echo "max_freq=$max_freq"
     ;;
 
   *)
